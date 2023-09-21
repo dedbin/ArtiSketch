@@ -2,18 +2,21 @@ from flask import jsonify
 from app import app, db
 from app.models import User, Prompt
 import logging
-
+from api_for_sd import api
+import config
 
 @app.route('/<api_key>/post_prompt/<text>', methods=['POST'])
 def post_prompt(api_key, text):
     user = User.query.get(api_key)
+    sd = api.WebUIApi(config.BASE_URL)
     if user:
         user.num_prompts += 1
-        prompt = Prompt(prompt_text=text, user=user)
+        pic = sd.prompt_to_image(text)
+        prompt = Prompt(prompt_text=text, user=user, photo_path=pic) #TODO: do saving picture to db
         db.session.add(prompt)
         db.session.commit()
         logging.info(f"Prompt added to user {api_key} successfully")
-        return jsonify({"message": "Prompt added successfully"}), 200
+        return jsonify({"message": "Prompt added successfully", "pic": pic}), 200
     else:
         logging.error("User not found")
         return jsonify({"error": "User not found"}), 404
